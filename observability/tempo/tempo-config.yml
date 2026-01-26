@@ -1,5 +1,7 @@
 # Tempo Configuration
-# Simple configuration for local development
+# Configuration for Tempo v2.6.x single-binary mode
+
+stream_over_http_enabled: true
 
 server:
   http_listen_port: 3200
@@ -18,11 +20,13 @@ distributor:
 # Ingester writes traces to storage
 ingester:
   max_block_duration: 5m
+  trace_idle_period: 10s
+  max_block_bytes: 1000000
 
-# Compactor handles trace data compaction
+# Compactor configuration
 compactor:
   compaction:
-    block_retention: 48h
+    block_retention: 1h
 
 # Metrics generator creates metrics from traces
 metrics_generator:

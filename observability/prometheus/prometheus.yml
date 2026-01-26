@@ -1,13 +1,9 @@
 # Prometheus Configuration
-# This configuration enables remote write receiver to accept metrics from Alloy
+# Remote write receiver is enabled via --web.enable-remote-write-receiver flag in docker-compose
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-
-# Enable remote write receiver to accept metrics from Alloy
-remote_write_receiver:
-  enabled: true
 
 # Scrape configurations
 scrape_configs:
