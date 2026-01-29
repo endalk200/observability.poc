@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -254,6 +255,26 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	span.SetAttributes(attribute.String("user.id", id))
 	h.logger.InfoContext(ctx, "Deleting user", "user_id", id)
 	h.userOperations.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "delete")))
+
+	_, existsSpan := otel.Tracer("user-api").Start(ctx, "user.exists")
+	defer existsSpan.End()
+	existsSpan.SetAttributes(attribute.String("user.id", id))
+
+	if _, err := h.store.GetByID(id); err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			existsSpan.SetAttributes(attribute.Bool("user.exists", false))
+			h.logger.WarnContext(ctx, "User not found", "user_id", id)
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		existsSpan.RecordError(err)
+		span.RecordError(err)
+		h.logger.ErrorContext(ctx, "Failed to check user existence", "user_id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	existsSpan.SetAttributes(attribute.Bool("user.exists", true))
 
 	if err := h.store.Delete(id); err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
