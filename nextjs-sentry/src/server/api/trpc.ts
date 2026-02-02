@@ -6,6 +6,7 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
+import * as Sentry from "@sentry/nextjs";
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -74,6 +75,16 @@ export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
 
 /**
+ * Sentry middleware for tRPC procedure tracing.
+ * Creates spans for each procedure and captures errors with full context.
+ */
+const sentryMiddleware = t.middleware(
+	Sentry.trpcMiddleware({
+		attachRpcInput: true, // Capture input data in traces
+	}),
+);
+
+/**
  * Middleware for timing procedure execution and adding an artificial delay in development.
  *
  * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
@@ -91,7 +102,13 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 	const result = await next();
 
 	const end = Date.now();
-	console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+	
+	// Log timing information to Sentry
+	Sentry.logger.info(`tRPC procedure completed`, {
+		path,
+		duration_ms: end - start,
+		is_dev: t._config.isDev,
+	});
 
 	return result;
 });
@@ -102,5 +119,9 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
+ * 
+ * Includes Sentry middleware for full tracing and error capture.
  */
-export const publicProcedure = t.procedure.use(timingMiddleware);
+export const publicProcedure = t.procedure
+	.use(sentryMiddleware)
+	.use(timingMiddleware);
