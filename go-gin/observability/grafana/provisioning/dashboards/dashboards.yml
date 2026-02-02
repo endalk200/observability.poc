@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning Configuration
+# Auto-loads dashboards from the specified folder
+
+apiVersion: 1
+
+providers:
+  - name: 'User API Dashboards'
+    orgId: 1
+    folder: 'User API'
+    folderUid: 'user-api'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
