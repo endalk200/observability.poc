@@ -1,0 +1,66 @@
+"use client";
+
+import { Button } from "~/app/_components/ui/button";
+import { Modal } from "~/app/_components/ui/modal";
+import { type Post, useDeletePostApi } from "./api-client";
+
+interface DeleteDialogApiProps {
+  isOpen: boolean;
+  onClose: () => void;
+  post: Pick<Post, "id" | "name"> | null;
+  onSuccess: () => void;
+}
+
+export function DeleteDialogApi({
+  isOpen,
+  onClose,
+  post,
+  onSuccess,
+}: DeleteDialogApiProps) {
+  const deletePost = useDeletePostApi();
+
+  const handleDelete = async () => {
+    if (post) {
+      try {
+        await deletePost.mutateAsync(post.id);
+        onSuccess();
+        onClose();
+      } catch {
+        // Error is handled by the mutation
+      }
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" title="Delete Post">
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Are you sure you want to delete{" "}
+          <span className="font-semibold text-gray-900">"{post?.name}"</span>?
+          This action cannot be undone.
+        </p>
+
+        {deletePost.error && (
+          <div className="rounded-lg bg-red-50 p-3 text-red-600 text-sm">
+            {deletePost.error.message ||
+              "Failed to delete post. Please try again."}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2">
+          <Button onClick={onClose} type="button" variant="secondary">
+            Cancel
+          </Button>
+          <Button
+            isLoading={deletePost.isPending}
+            onClick={handleDelete}
+            type="button"
+            variant="danger"
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
